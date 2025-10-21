@@ -9,6 +9,7 @@
     .container { max-width:480px; margin:auto; background:#fff; padding:16px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
     h2 { text-align:center; margin:0; }
     p { text-align:center; margin:8px 0 16px; }
+    input { padding:10px; font-size:16px; width:100%; margin-top:8px; border-radius:8px; border:1px solid #ccc; }
     button { padding:12px 20px; font-size:16px; border:none; border-radius:8px; background:#0b1220; color:#fff; cursor:pointer; margin-top:8px; width:100%; }
     #results div { border:1px solid #e2e8f0; padding:10px; margin-top:8px; border-radius:8px; }
     a { color:#0b1220; text-decoration:none; }
@@ -18,114 +19,147 @@
 </head>
 <body>
 
-  <div class="container">
-    <img class="logo" src="https://base.org/favicon-32x32.png" alt="Base Logo">
-    <h2>Base Role Checker</h2>
-    <p>Connect your wallet to check Base token & NFT roles</p>
+<div class="container">
+  <img class="logo" src="https://base.org/favicon-32x32.png" alt="Base Logo">
+  <h2>Base Role Checker</h2>
+  <p>Check your Base token & NFT roles.</p>
 
-    <div id="status">Not connected</div>
+  <div id="status">Not connected</div>
+
+  <div id="wallet-section">
     <button id="btnConnect">Connect Wallet & Check Roles</button>
-    <button id="btnShare" style="display:none;">Download Share Card</button>
-
-    <div id="results"></div>
-
-    <div class="socials">
-      <strong>Follow me:</strong>
-      <a href="https://t.me/pawansatoshiji" target="_blank">Official Telegram Channel</a>
-      <a href="https://youtube.com/@PawanSatoshi" target="_blank">YouTube Channel</a>
-      <a href="https://x.com/pawansatoshix" target="_blank">X Profile</a>
-      <a href="https://x.com/intent/follow?screen_name=pawansatoshix" target="_blank">Follow on X</a>
-    </div>
   </div>
 
-  <!-- Ethers.js UMD -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
-  <script>
-    const ROLES = [
-      { id:"base-nft", name:"Base Builder NFT Holder", type:"erc721", contract:"0x27f971cb582bf9e50f397e4d29a5c7a34f11faa2", minBalance:1, description:"Holds at least 1 Base Builder NFT." },
-      { id:"base-token", name:"Base Protocol Token Holder", type:"erc20", contract:"0x07150e919b4de5fd6a63de1f9384828396f25fdc", minBalance:"1000000000", description:"Holds at least 1 BASE token (9 decimals)." }
-    ];
+  <div id="manual-section" style="margin-top:12px; display:none;">
+    <input type="text" id="manualAddress" placeholder="Enter your Base address" />
+    <button id="btnCheckManual">Check Roles</button>
+  </div>
 
-    const BASE_RPC = "https://rpc.base.org";
-    const status = document.getElementById("status");
-    const btnConnect = document.getElementById("btnConnect");
-    const btnShare = document.getElementById("btnShare");
-    const resultsEl = document.getElementById("results");
-    let lastResults = null;
-    let userAddress = null;
+  <button id="btnShare" style="display:none;">Download Share Card</button>
 
-    async function getNonce() { return `Base Role Checker — prove ownership — ${Date.now()}`; }
+  <div id="results"></div>
 
-    async function checkRoles(address){
-      const results=[];
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      for(const r of ROLES){
-        try{
-          const contract = new ethers.Contract(r.contract, ["function balanceOf(address) view returns (uint256)"], provider);
-          const bal = await contract.balanceOf(address);
-          const qualifies = BigInt(bal.toString()) >= BigInt(r.minBalance);
-          results.push({id:r.id,name:r.name,qualifies,balance:bal.toString(),description:r.description});
-        }catch(e){
-          results.push({id:r.id,name:r.name,qualifies:false,balance:"0",description:r.description});
-        }
-      }
-      return results;
+  <div class="socials">
+    <strong>Follow me:</strong>
+    <a href="https://t.me/pawansatoshiji" target="_blank">Official Telegram Channel</a>
+    <a href="https://youtube.com/@PawanSatoshi" target="_blank">YouTube Channel</a>
+    <a href="https://x.com/pawansatoshix" target="_blank">X Profile</a>
+    <a href="https://x.com/intent/follow?screen_name=pawansatoshix" target="_blank">Follow on X</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
+<script>
+const ROLES = [
+  { id:"base-nft", name:"Base Builder NFT Holder", type:"erc721", contract:"0x27f971cb582bf9e50f397e4d29a5c7a34f11faa2", minBalance:1, description:"Holds at least 1 Base Builder NFT." },
+  { id:"base-token", name:"Base Protocol Token Holder", type:"erc20", contract:"0x07150e919b4de5fd6a63de1f9384828396f25fdc", minBalance:"1000000000", description:"Holds at least 1 BASE token (9 decimals)." }
+];
+
+const BASE_RPC = "https://rpc.base.org";
+const status = document.getElementById("status");
+const btnConnect = document.getElementById("btnConnect");
+const btnShare = document.getElementById("btnShare");
+const resultsEl = document.getElementById("results");
+const walletSection = document.getElementById("wallet-section");
+const manualSection = document.getElementById("manual-section");
+const manualInput = document.getElementById("manualAddress");
+const btnCheckManual = document.getElementById("btnCheckManual");
+
+let lastResults = null;
+let userAddress = null;
+
+async function checkRoles(address) {
+  const results = [];
+  const provider = window.ethereum ? new ethers.providers.Web3Provider(window.ethereum) : new ethers.providers.JsonRpcProvider(BASE_RPC);
+  for (const r of ROLES) {
+    try {
+      const contract = new ethers.Contract(r.contract, ["function balanceOf(address) view returns (uint256)"], provider);
+      const bal = await contract.balanceOf(address);
+      const qualifies = BigInt(bal.toString()) >= BigInt(r.minBalance);
+      results.push({id:r.id,name:r.name,qualifies,balance:bal.toString(),description:r.description});
+    } catch(e) {
+      results.push({id:r.id,name:r.name,qualifies:false,balance:"0",description:r.description});
     }
+  }
+  return results;
+}
 
-    function renderResults(results, addr){
-      resultsEl.innerHTML="";
-      const h=document.createElement("h3"); h.innerText="Results for "+addr; resultsEl.appendChild(h);
-      results.forEach(r=>{
-        const box=document.createElement("div");
-        box.innerHTML=`<strong>${r.name}</strong> — ${r.qualifies?"✅ Qualified":"❌ Not qualified"}<div style="color:#555;font-size:13px">Balance: ${r.balance} — ${r.description}</div>`;
-        resultsEl.appendChild(box);
-      });
-    }
+function renderResults(results, addr) {
+  resultsEl.innerHTML="";
+  const h=document.createElement("h3"); h.innerText="Results for "+addr; resultsEl.appendChild(h);
+  results.forEach(r=>{
+    const box=document.createElement("div");
+    box.innerHTML=`<strong>${r.name}</strong> — ${r.qualifies?"✅ Qualified":"❌ Not qualified"}<div style="color:#555;font-size:13px">Balance: ${r.balance} — ${r.description}</div>`;
+    resultsEl.appendChild(box);
+  });
+}
 
-    function downloadSVGCard(){
-      if(!lastResults || !userAddress) return alert("No results yet");
-      const rows = lastResults.map((r,i)=>`
-        <text x="40" y="${220+i*70}" font-size="28" font-family="sans-serif" fill="${r.qualifies?'#10b981':'#ef4444'}">${r.name} — ${r.qualifies?"Qualified":"Not qualified"}</text>
-        <text x="40" y="${250+i*70}" font-size="16" font-family="sans-serif" fill="#94a3b8">${r.description}</text>
-      `).join("");
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${400 + lastResults.length*70}">
-        <rect width="100%" height="100%" fill="#0b1220"/>
-        <text x="40" y="80" font-size="48" font-family="sans-serif" fill="#fff">Base Role Checker</text>
-        <text x="40" y="140" font-size="20" font-family="sans-serif" fill="#94a3b8">${userAddress}</text>
-        ${rows}
-      </svg>`;
-      const blob = new Blob([svg],{type:"image/svg+xml"});
-      const url = URL.createObjectURL(blob);
-      const a=document.createElement("a"); a.href=url; a.download="base-role-card.svg"; a.click(); URL.revokeObjectURL(url);
-    }
+function downloadSVGCard() {
+  if(!lastResults || !userAddress) return alert("No results yet");
+  const rows = lastResults.map((r,i)=>`
+    <text x="40" y="${220+i*70}" font-size="28" font-family="sans-serif" fill="${r.qualifies?'#10b981':'#ef4444'}">${r.name} — ${r.qualifies?"Qualified":"Not qualified"}</text>
+    <text x="40" y="${250+i*70}" font-size="16" font-family="sans-serif" fill="#94a3b8">${r.description}</text>
+  `).join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${400 + lastResults.length*70}">
+    <rect width="100%" height="100%" fill="#0b1220"/>
+    <text x="40" y="80" font-size="48" font-family="sans-serif" fill="#fff">Base Role Checker</text>
+    <text x="40" y="140" font-size="20" font-family="sans-serif" fill="#94a3b8">${userAddress}</text>
+    ${rows}
+  </svg>`;
+  const blob = new Blob([svg],{type:"image/svg+xml"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="base-role-card.svg"; a.click(); URL.revokeObjectURL(url);
+}
 
-    async function connectAndCheck(){
-      if(!window.ethereum) return alert("Open this page in a mobile wallet browser like MetaMask or Coinbase Wallet.");
-      try{
-        status.innerText="Requesting accounts...";
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-        const addr = await signer.getAddress();
-        userAddress = addr;
-        status.innerText="Connected: "+addr;
-        const nonce = await getNonce();
-        await signer.signMessage(nonce);
-        status.innerText="Checking roles...";
-        const results = await checkRoles(addr);
-        lastResults = results;
-        renderResults(results, addr);
-        btnShare.style.display="inline-block";
-        status.innerText="Done";
-      }catch(err){
-        console.error(err);
-        alert("Error connecting wallet: "+(err.message||err));
-        status.innerText="Error";
-      }
-    }
+// Wallet connect handler
+async function connectWallet() {
+  if(!window.ethereum) {
+    status.innerText="Wallet not detected, please enter address manually.";
+    walletSection.style.display="none";
+    manualSection.style.display="block";
+    return;
+  }
+  try {
+    status.innerText="Requesting accounts...";
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const addr = await signer.getAddress();
+    userAddress = addr;
+    status.innerText="Connected: "+addr;
+    const results = await checkRoles(addr);
+    lastResults = results;
+    renderResults(results, addr);
+    btnShare.style.display="inline-block";
+    manualSection.style.display="none";
+  } catch(err) {
+    console.error(err);
+    alert("Error connecting wallet: "+(err.message||err));
+    status.innerText="Error";
+  }
+}
 
-    btnConnect.addEventListener("click", connectAndCheck);
-    btnShare.addEventListener("click", downloadSVGCard);
-  </script>
+// Manual address handler
+async function checkManualAddress() {
+  const addr = manualInput.value.trim();
+  if(!addr) return alert("Enter a valid Base address");
+  try {
+    userAddress = addr;
+    status.innerText="Checking roles...";
+    const results = await checkRoles(addr);
+    lastResults = results;
+    renderResults(results, addr);
+    btnShare.style.display="inline-block";
+  } catch(err) {
+    console.error(err);
+    alert("Error: "+(err.message||err));
+    status.innerText="Error";
+  }
+}
+
+btnConnect.addEventListener("click", connectWallet);
+btnCheckManual.addEventListener("click", checkManualAddress);
+btnShare.addEventListener("click", downloadSVGCard);
+</script>
 </body>
-    </html>
+  </html>
