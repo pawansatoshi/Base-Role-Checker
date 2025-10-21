@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Base Role Checker</title>
   <style>
-    body { font-family: system-ui, Arial; padding: 16px; background: #f7fafc; margin:0; }
-    h2 { text-align: center; }
-    .container { max-width: 480px; margin: auto; background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    button { padding: 12px 20px; font-size: 16px; border:none; border-radius:8px; background:#0b1220; color:#fff; cursor:pointer; margin-top:8px; }
+    body { font-family: system-ui, Arial; background:#f7fafc; margin:0; padding:16px; }
+    .container { max-width:480px; margin:auto; background:#fff; padding:16px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+    h2 { text-align:center; margin:0; }
+    p { text-align:center; margin:8px 0 16px; }
+    button { padding:12px 20px; font-size:16px; border:none; border-radius:8px; background:#0b1220; color:#fff; cursor:pointer; margin-top:8px; width:100%; }
     #results div { border:1px solid #e2e8f0; padding:10px; margin-top:8px; border-radius:8px; }
-    a { color: #0b1220; text-decoration:none; }
+    a { color:#0b1220; text-decoration:none; }
     .socials { margin-top:16px; display:flex; flex-direction:column; gap:8px; }
-    img.logo { width: 80px; display:block; margin:16px auto; }
+    img.logo { width:80px; display:block; margin:16px auto; }
   </style>
 </head>
 <body>
@@ -20,7 +21,7 @@
   <div class="container">
     <img class="logo" src="https://base.org/favicon-32x32.png" alt="Base Logo">
     <h2>Base Role Checker</h2>
-    <p style="text-align:center;">Connect your wallet to check your Base token and NFT roles</p>
+    <p>Connect your wallet to check Base token & NFT roles</p>
 
     <div id="status">Not connected</div>
     <button id="btnConnect">Connect Wallet & Check Roles</button>
@@ -37,7 +38,7 @@
     </div>
   </div>
 
-  <!-- Ethers.js UMD for mobile wallets -->
+  <!-- Ethers.js UMD -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.9.0/dist/ethers.umd.min.js"></script>
   <script>
     const ROLES = [
@@ -53,11 +54,11 @@
     let lastResults = null;
     let userAddress = null;
 
-    async function getNonce(){ return `Base Role Checker — prove ownership — ${Date.now()}`; }
+    async function getNonce() { return `Base Role Checker — prove ownership — ${Date.now()}`; }
 
     async function checkRoles(address){
       const results=[];
-      const provider = new ethers.providers.Web3Provider(window.ethereum || new ethers.providers.JsonRpcProvider(BASE_RPC));
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
       for(const r of ROLES){
         try{
           const contract = new ethers.Contract(r.contract, ["function balanceOf(address) view returns (uint256)"], provider);
@@ -118,14 +119,13 @@
         status.innerText="Done";
       }catch(err){
         console.error(err);
-        alert("Error: "+(err.message||err));
+        alert("Error connecting wallet: "+(err.message||err));
         status.innerText="Error";
       }
     }
 
-    btnConnect.addEventListener("click",connectAndCheck);
-    btnShare.addEventListener("click",downloadSVGCard);
+    btnConnect.addEventListener("click", connectAndCheck);
+    btnShare.addEventListener("click", downloadSVGCard);
   </script>
-
 </body>
-        </html>
+    </html>
